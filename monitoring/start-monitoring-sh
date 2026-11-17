@@ -1,0 +1,10 @@
+#!/bin/sh
+
+LOG_FILE="/results/monitoring.log"
+TARGET="10.10.2.3"
+
+echo "Starting network monitoring..."
+echo "Monitoring traffic involving restricted server: $TARGET"
+echo "Saving output to: $LOG_FILE"
+
+tcpdump -l -n -i any host "$TARGET" > "$LOG_FILE" 2>&1
