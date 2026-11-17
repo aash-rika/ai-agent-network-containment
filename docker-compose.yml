@@ -1,0 +1,69 @@
+services:
+
+  agent:
+    image: alpine:latest
+    container_name: agent
+    command: >
+      sh -c "apk add --no-cache curl iproute2 &&
+      /setup-route.sh &&
+      sleep infinity"
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./agent/setup-route.sh:/setup-route.sh:ro
+      - ./agent/run-workload.sh:/run-workload.sh:ro
+    networks:
+      agent-network:
+        ipv4_address: 10.10.1.2
+
+  security-gateway:
+    image: alpine:latest
+    container_name: security-gateway
+    command: >
+      sh -c "apk add --no-cache iptables iproute2 tcpdump &&
+      /setup-firewall.sh &&
+      sleep infinity"
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./gateway/setup-firewall.sh:/setup-firewall.sh:ro
+      - ./gateway/baseline.sh:/baseline.sh:ro
+      - ./gateway/monitoring-mode.sh:/monitoring-mode.sh:ro
+      - ./monitoring/start-monitoring.sh:/start-monitoring.sh:ro
+      - ./monitoring/stop-monitoring.sh:/stop-monitoring.sh:ro
+      - ./results:/results
+    sysctls:
+      - net.ipv4.ip_forward=1
+    networks:
+      agent-network:
+        ipv4_address: 10.10.1.3
+      server-network:
+        ipv4_address: 10.10.2.4
+
+  approved-server:
+    image: nginx:alpine
+    container_name: approved-server
+    networks:
+      server-network:
+        ipv4_address: 10.10.2.2
+
+  restricted-server:
+    image: nginx:alpine
+    container_name: restricted-server
+    networks:
+      server-network:
+        ipv4_address: 10.10.2.3
+
+networks:
+
+  agent-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.1.0/24
+
+  server-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.2.0/24
